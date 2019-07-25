@@ -30,7 +30,7 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
 Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {
   std::cout<<"DB::Put"<<std::endl;
 
-  string rep_;
+  std::string rep_;
   
 
 
