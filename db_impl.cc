@@ -1,4 +1,6 @@
 #include "db_impl.h"
+#include "dbformat.h"
+#include "coding.h"
 
 namespace leveldb {
 
@@ -31,6 +33,10 @@ Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {
   std::cout<<"DB::Put"<<std::endl;
 
   std::string rep_;
+  rep_.push_back(static_cast<char>(kTypeValue)); 
+  PutLengthPrefixedSlice(&rep_, key);
+  PutLengthPrefixedSlice(&rep_, value);
+  
   
 
 
