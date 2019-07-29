@@ -1,3 +1,0 @@
-g++: warning: .: linker input file unused because linking not done
-g++: warning: .: linker input file unused because linking not done
-g++: warning: .: linker input file unused because linking not done

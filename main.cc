@@ -18,7 +18,7 @@ int main()
 
     leveldb::Options options;
 
-    Status status = DB::Open(options, "./tmp/testdb", &db);
+    Status status = DB::Open(options, "./testdb", &db);
 	status = db->Put(leveldb::WriteOptions(), key, value);
 	
 	delete db;

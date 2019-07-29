@@ -1,6 +1,7 @@
 #include "db_impl.h"
 #include "dbformat.h"
 #include "coding.h"
+#include "env.h"
 
 namespace leveldb {
 
@@ -24,8 +25,11 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   DBImpl* impl = new DBImpl(options, dbname);
   *dbptr = impl;
 
+  WritableFile* lfile;
+  Status s = options.env->NewWritableFile(dbname,&lfile);
+
+
   
-  Status s;
   return s;
 }
 
