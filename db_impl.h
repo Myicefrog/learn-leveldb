@@ -7,6 +7,7 @@
 #include <string>
 
 #include "db.h"
+#include "log_writer.h"
 
 namespace leveldb {
 
@@ -23,10 +24,13 @@ class DBImpl : public DB {
   // Implementations of the DB interface
   Status Put(const WriteOptions&, const Slice& key,
              const Slice& value) override;
+  
+  Status Write(const std::string rep_) override;
 
  private:
   friend class DB;
   const std::string dbname_;
+  log::Writer* log_;
 
 };
 

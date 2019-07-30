@@ -27,7 +27,7 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
 
   WritableFile* lfile;
   Status s = options.env->NewWritableFile(dbname,&lfile);
-
+  impl->log_ = new log::Writer(lfile);
 
   
   return s;
@@ -40,12 +40,18 @@ Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {
   rep_.push_back(static_cast<char>(kTypeValue)); 
   PutLengthPrefixedSlice(&rep_, key);
   PutLengthPrefixedSlice(&rep_, value);
-  
-  
 
-
-  Status s;
-  return s;
+  return Write(rep_);
+  Status status;
+  return status;
 }
+
+Status DBImpl::Write(const std::string rep_) {
+
+  Status status = log_->AddRecord(Slice(rep_));
+  return status;
+
+}
+
 
 }
