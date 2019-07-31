@@ -6,10 +6,13 @@
 
 namespace leveldb {
 
+class Comparator;
+
 struct Options {
   Options();
 
   Env* env;
+  const Comparator* comparator;
 
 };
 
