@@ -2,6 +2,12 @@
 
 namespace leveldb {
 
+void PutFixed64(std::string* dst, uint64_t value) {
+  char buf[sizeof(value)];
+  EncodeFixed64(buf, value);
+  dst->append(buf, sizeof(buf));
+}
+
 void PutLengthPrefixedSlice(std::string* dst, const Slice& value) {
   PutVarint32(dst, value.size());
   dst->append(value.data(), value.size());
@@ -40,6 +46,47 @@ char* EncodeVarint32(char* dst, uint32_t v) {
   }
   return reinterpret_cast<char*>(ptr);
 
+}
+
+bool GetVarint32(Slice* input, uint32_t* value) {
+  const char* p = input->data();
+  const char* limit = p + input->size();
+  const char* q = GetVarint32Ptr(p, limit, value);
+  if (q == nullptr) {
+    return false;
+  } else {
+    *input = Slice(q, limit - q);
+    return true;
+  }
+}
+
+bool GetLengthPrefixedSlice(Slice* input, Slice* result) {
+  uint32_t len;
+  if (GetVarint32(input, &len) && input->size() >= len) {
+    *result = Slice(input->data(), len);
+    input->remove_prefix(len);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+const char* GetVarint32PtrFallback(const char* p, const char* limit,
+                                   uint32_t* value) {
+  uint32_t result = 0;
+  for (uint32_t shift = 0; shift <= 28 && p < limit; shift += 7) {
+    uint32_t byte = *(reinterpret_cast<const uint8_t*>(p));
+    p++;
+    if (byte & 128) {
+      // More bytes are present
+      result |= ((byte & 127) << shift);
+    } else {
+      result |= (byte << shift);
+      *value = result;
+      return reinterpret_cast<const char*>(p);
+    }
+  }
+  return nullptr;
 }
 
 }
