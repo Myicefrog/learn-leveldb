@@ -9,6 +9,7 @@
 #include "options.h"
 #include "slice.h"
 #include "status.h"
+#include "write_batch.h"
 
 namespace leveldb {
 class DB {
@@ -27,7 +28,7 @@ class DB {
 	virtual Status Put(const WriteOptions& options, const Slice& key,
                      const Slice& value) = 0;
     
-    virtual Status Write(const std::string rep_) = 0;
+    virtual Status Write(const WriteOptions& options, WriteBatch* updates) = 0;
 
 };
 

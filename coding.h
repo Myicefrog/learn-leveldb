@@ -22,6 +22,8 @@ bool GetLengthPrefixedSlice(Slice* input, Slice* result);
 
 bool GetVarint32(Slice* input, uint32_t* value);
 
+int VarintLength(uint64_t v);
+
 inline void EncodeFixed64(char* dst, uint64_t value) {
   uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);
 

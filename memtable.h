@@ -4,9 +4,9 @@
 #include <string>
 
 #include "dbformat.h"
-//#include "skiplist.h"
-//#include "db.h"
-//#include "arena.h"
+#include "skiplist.h"
+#include "db.h"
+#include "arena.h"
 
 namespace leveldb {
 
@@ -68,14 +68,14 @@ class MemTable {
     int operator()(const char* a, const char* b) const;
   };
 
-//  typedef SkipList<const char*, KeyComparator> Table;
+  typedef SkipList<const char*, KeyComparator> Table;
 
   ~MemTable();  // Private since only Unref() should be used to delete it
 
   KeyComparator comparator_;
   int refs_;
-//  Arena arena_;
-//  Table table_;
+  Arena arena_;
+  Table table_;
 };
 
 }  // namespace leveldb
