@@ -33,10 +33,17 @@ class DBImpl : public DB {
   Status Get(const ReadOptions& options, const Slice& key,
              std::string* value) override;
 
+  Status MakeRoomForWrite(bool force);
+
   uint64_t last_sequence;
   MemTable* mem_;
+  MemTable* imm_;
+  std::atomic<bool> has_imm_;
+  uint64_t next_file_number_;
 
  private:
+  Env* const env_;
+
   friend class DB;
   const std::string dbname_;
   log::Writer* log_;
@@ -44,8 +51,12 @@ class DBImpl : public DB {
   const InternalKeyComparator internal_comparator_;
   WriteBatch* tmp_batch_;
   port::Mutex mutex_;
+  
+  WritableFile* logfile_;
+  uint64_t logfile_number_;
 
   WriteBatch* BuildBatchGroup(Writer** last_writer);
+  
   std::deque<Writer*> writers_;
 
 };

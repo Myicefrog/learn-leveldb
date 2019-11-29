@@ -19,15 +19,20 @@ struct DBImpl::Writer {
 };  
 
 DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
-    : dbname_(dbname),
+    : env_(raw_options.env),
+    dbname_(dbname),
     internal_comparator_(raw_options.comparator),
     last_sequence(0),
-    mem_(nullptr)
+    mem_(nullptr),
+    imm_(nullptr),
+    has_imm_(false),
+    next_file_number_(2)
 {}
 
 DBImpl::~DBImpl()
 {
   if (mem_ != nullptr) mem_->Unref();
+  if (imm_ != nullptr) imm_->Unref();
 }
 
 
@@ -43,8 +48,11 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   DBImpl* impl = new DBImpl(options, dbname);
   *dbptr = impl;
 
+  uint64_t new_log_number = impl->next_file_number_++;
   WritableFile* lfile;
   Status s = options.env->NewWritableFile(dbname,&lfile);
+  impl->logfile_ = lfile;
+  impl->logfile_number_ = new_log_number;
   impl->log_ = new log::Writer(lfile);
   impl->mem_ = new MemTable(impl->internal_comparator_);
   impl->mem_->Ref();
@@ -72,7 +80,8 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates)  {
   Writer* last_writer = &w;
   writers_.push_back(&w);
 
-  Status status;
+  Status status = MakeRoomForWrite(updates == nullptr);
+
   if (updates != nullptr){
     WriteBatch* updates = BuildBatchGroup(&last_writer);
     WriteBatchInternal::SetSequence(updates, last_sequence + 1);
@@ -152,5 +161,18 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
   return result;
 }
 
+Status DBImpl::MakeRoomForWrite(bool force) {
+  Status s;
+  while (true) {
+    uint64_t new_log_number = next_file_number_++;
+    WritableFile* lfile = nullptr;
+    s = env_->NewWritableFile(LogFileName(dbname_, new_log_number), &lfile);
+    delete log_;
+    delete logfile_;
+  }  
+
+  return s;
+
+}
 
 }
