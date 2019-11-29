@@ -88,6 +88,22 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates)  {
 
 }
 
+Status DBImpl::Get(const ReadOptions& options, const Slice& key,
+                   std::string* value) {
+  Status s;
+  MemTable* mem = mem_;
+  SequenceNumber snapshot;
+  mem->Ref();
+
+  LookupKey lkey(key, snapshot);
+  if (mem->Get(lkey, value, &s)) {
+     // Done
+  } 
+                   
+  mem->Unref(); 
+  return s;
+}
+
 WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
  // mutex_.AssertHeld();
   assert(!writers_.empty());

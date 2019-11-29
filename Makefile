@@ -14,7 +14,7 @@ OBJECTS=$(patsubst %.cc,%.o,$(SOURCES))
 LIBS=-lpthread
 
 leveldb: $(OBJECTS)
-	$(CXX) $(OBJECTS)  -o $(TARGETS)
+	$(CXX) $(OBJECTS) $(LIBS) -o $(TARGETS)
 
 %.o : %.cc
 	$(CXX) $(CFLAGS) $(CC_OPTS)  $< -o $@

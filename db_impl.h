@@ -30,6 +30,9 @@ class DBImpl : public DB {
   
   Status Write(const WriteOptions& options, WriteBatch* updates) override;
 
+  Status Get(const ReadOptions& options, const Slice& key,
+             std::string* value) override;
+
   uint64_t last_sequence;
   MemTable* mem_;
 

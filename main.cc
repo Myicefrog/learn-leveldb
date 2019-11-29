@@ -20,7 +20,11 @@ int main()
 
     Status status = DB::Open(options, "./testdb", &db);
 	status = db->Put(leveldb::WriteOptions(), key, value);
+
+    std::string value1 = "";
+    status = db->Get(leveldb::ReadOptions(), key, &value1);
 	
+    cout<<"db get value1 is "<<value1<<endl;
 	delete db;
 
     return 0;

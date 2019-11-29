@@ -30,6 +30,9 @@ class DB {
     
     virtual Status Write(const WriteOptions& options, WriteBatch* updates) = 0;
 
+	virtual Status Get(const ReadOptions& options, const Slice& key,
+                     std::string* value) = 0;
+
 };
 
 }
