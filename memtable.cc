@@ -18,6 +18,8 @@ MemTable::MemTable(const InternalKeyComparator& comparator)
 
 MemTable::~MemTable() { assert(refs_ == 0); }
 
+size_t MemTable::ApproximateMemoryUsage() { return arena_.MemoryUsage(); }
+
 int MemTable::KeyComparator::operator()(const char* aptr,
                                         const char* bptr) const {
   // Internal keys are encoded as length-prefixed strings.
@@ -26,6 +28,45 @@ int MemTable::KeyComparator::operator()(const char* aptr,
   return comparator.Compare(a, b);
 }
 
+// Encode a suitable internal key target for "target" and return it.
+// Uses *scratch as scratch space, and the returned pointer will point
+// into this scratch space.
+static const char* EncodeKey(std::string* scratch, const Slice& target) {
+  scratch->clear();
+  PutVarint32(scratch, target.size());
+  scratch->append(target.data(), target.size());
+  return scratch->data();
+}
+
+class MemTableIterator : public Iterator {
+ public:
+  explicit MemTableIterator(MemTable::Table* table) : iter_(table) {}
+
+  MemTableIterator(const MemTableIterator&) = delete;
+  MemTableIterator& operator=(const MemTableIterator&) = delete;
+
+  ~MemTableIterator() override = default;
+
+  bool Valid() const override { return iter_.Valid(); }
+  void Seek(const Slice& k) override { iter_.Seek(EncodeKey(&tmp_, k)); }
+  void SeekToFirst() override { iter_.SeekToFirst(); }
+  void SeekToLast() override { iter_.SeekToLast(); }
+  void Next() override { iter_.Next(); }
+  void Prev() override { iter_.Prev(); }
+  Slice key() const override { return GetLengthPrefixedSlice(iter_.key()); }
+  Slice value() const override {
+    Slice key_slice = GetLengthPrefixedSlice(iter_.key());
+    return GetLengthPrefixedSlice(key_slice.data() + key_slice.size());
+  }
+
+  Status status() const override { return Status::OK(); }
+
+ private:
+  MemTable::Table::Iterator iter_;
+  std::string tmp_;  // For passing to EncodeKey
+};
+
+Iterator* MemTable::NewIterator() { return new MemTableIterator(&table_); }
 
 void MemTable::Add(SequenceNumber s, ValueType type, const Slice& key,
                    const Slice& value) {

@@ -22,6 +22,14 @@ class Env {
   virtual Status NewWritableFile(const std::string& fname,
                                  WritableFile** result) = 0;
 
+  virtual void Schedule(void (*function)(void* arg), void* arg) = 0;
+
+  virtual void StartThread(void (*function)(void* arg), void* arg) = 0;
+
+  virtual uint64_t NowMicros() = 0;
+
+  virtual Status DeleteFile(const std::string& fname) = 0;
+
 };
 
 class WritableFile {

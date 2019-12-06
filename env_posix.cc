@@ -27,6 +27,7 @@
 #include "env.h"
 #include "slice.h"
 #include "status.h"
+#include "port.h"
 
 namespace leveldb {
 
@@ -264,11 +265,93 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
+  void Schedule(void (*background_work_function)(void* background_work_arg),
+                void* background_work_arg) override;
+
+  void StartThread(void (*thread_main)(void* thread_main_arg),
+                   void* thread_main_arg) override {
+    std::thread new_thread(thread_main, thread_main_arg);
+    new_thread.detach();
+  }
+
+  uint64_t NowMicros() override {
+    static constexpr uint64_t kUsecondsPerSecond = 1000000;
+    struct ::timeval tv;
+    ::gettimeofday(&tv, nullptr);
+    return static_cast<uint64_t>(tv.tv_sec) * kUsecondsPerSecond + tv.tv_usec;
+  }
+
+ private:
+  void BackgroundThreadMain();
+
+  static void BackgroundThreadEntryPoint(PosixEnv* env) {
+    env->BackgroundThreadMain();
+  }
+
+  struct BackgroundWorkItem {
+    explicit BackgroundWorkItem(void (*function)(void* arg), void* arg)
+        : function(function), arg(arg) {}
+
+    void (*const function)(void*);
+    void* const arg;
+  };
+
+  port::Mutex background_work_mutex_;
+  port::CondVar background_work_cv_;
+  bool started_background_thread_;
+
+  std::queue<BackgroundWorkItem> background_work_queue_;
+
+  //PosixLockTable locks_;  // Thread-safe.
+  //Limiter mmap_limiter_;  // Thread-safe.
+  //Limiter fd_limiter_;    // Thread-safe.
+
 };
 
 } //namespace 
-PosixEnv::PosixEnv(){}
+PosixEnv::PosixEnv()    
+: background_work_cv_(&background_work_mutex_),
+      started_background_thread_(false){}
 
+void PosixEnv::Schedule(
+    void (*background_work_function)(void* background_work_arg),
+    void* background_work_arg) {
+  background_work_mutex_.Lock();
+
+  // Start the background thread, if we haven't done so already.
+  if (!started_background_thread_) {
+    started_background_thread_ = true;
+    std::thread background_thread(PosixEnv::BackgroundThreadEntryPoint, this);
+    background_thread.detach();
+  }
+
+  // If the queue is empty, the background thread may be waiting for work.
+  if (background_work_queue_.empty()) {
+    background_work_cv_.Signal();
+  }
+
+  background_work_queue_.emplace(background_work_function, background_work_arg);
+  background_work_mutex_.Unlock();
+}
+
+void PosixEnv::BackgroundThreadMain() {
+  while (true) {
+    background_work_mutex_.Lock();
+
+    // Wait until there is work to be done.
+    while (background_work_queue_.empty()) {
+      background_work_cv_.Wait();
+    }
+
+    assert(!background_work_queue_.empty());
+    auto background_work_function = background_work_queue_.front().function;
+    void* background_work_arg = background_work_queue_.front().arg;
+    background_work_queue_.pop();
+
+    background_work_mutex_.Unlock();
+    background_work_function(background_work_arg);
+  }
+}
 
 namespace {
 

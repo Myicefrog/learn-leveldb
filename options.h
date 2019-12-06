@@ -8,12 +8,20 @@ namespace leveldb {
 
 class Comparator;
 
+enum CompressionType {
+  // NOTE: do not change the values of existing entries, as these are
+  // part of the persistent format on disk.
+  kNoCompression = 0x0,
+  kSnappyCompression = 0x1
+};
+
 struct Options {
   Options();
 
   Env* env;
   const Comparator* comparator;
 
+  int block_restart_interval = 16;
 };
 
 struct WriteOptions {

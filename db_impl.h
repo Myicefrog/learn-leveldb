@@ -14,6 +14,10 @@
 namespace leveldb {
 
 class MemTable;
+class TableCache;
+class VersionSet;
+class VersionEdit;
+class Version;
 
 class DBImpl : public DB {
  public:
@@ -33,18 +37,24 @@ class DBImpl : public DB {
   Status Get(const ReadOptions& options, const Slice& key,
              std::string* value) override;
 
+  Status WriteLevel0Table(MemTable* mem, VersionEdit* edit, Version* base);
   Status MakeRoomForWrite(bool force);
+  void MaybeScheduleCompaction();
+  static void BGWork(void* db);
+  void BackgroundCall();
+  void BackgroundCompaction();
+  void CompactMemTable();
 
   uint64_t last_sequence;
   MemTable* mem_;
   MemTable* imm_;
   std::atomic<bool> has_imm_;
-  uint64_t next_file_number_;
 
  private:
-  Env* const env_;
-
   friend class DB;
+  
+  Env* const env_;
+  const Options options_;
   const std::string dbname_;
   log::Writer* log_;
   struct Writer;
@@ -58,6 +68,12 @@ class DBImpl : public DB {
   WriteBatch* BuildBatchGroup(Writer** last_writer);
   
   std::deque<Writer*> writers_;
+  bool background_compaction_scheduled_;
+
+  TableCache* const table_cache_;
+  VersionSet* const versions_;
+
+  std::set<uint64_t> pending_outputs_;
 
 };
 

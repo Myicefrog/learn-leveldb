@@ -4,6 +4,12 @@
 
 #include "write_batch_internal.h"
 #include "memtable.h"
+#include "table_cache.h"
+#include "version_set.h"
+#include "version_edit.h"
+#include "filename.h"
+#include "iterator.h"
+#include "builder.h"
 
 namespace leveldb {
 
@@ -21,16 +27,19 @@ struct DBImpl::Writer {
 DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
     : env_(raw_options.env),
     dbname_(dbname),
+    table_cache_(new TableCache(dbname_, options_, 990)),
     internal_comparator_(raw_options.comparator),
     last_sequence(0),
     mem_(nullptr),
     imm_(nullptr),
     has_imm_(false),
-    next_file_number_(2)
+    background_compaction_scheduled_(false),
+    versions_(new VersionSet(dbname_, &options_, table_cache_,&internal_comparator_))
 {}
 
 DBImpl::~DBImpl()
 {
+  delete versions_;
   if (mem_ != nullptr) mem_->Unref();
   if (imm_ != nullptr) imm_->Unref();
 }
@@ -48,7 +57,7 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   DBImpl* impl = new DBImpl(options, dbname);
   *dbptr = impl;
 
-  uint64_t new_log_number = impl->next_file_number_++;
+  uint64_t new_log_number = impl->versions_->NewFileNumber();
   WritableFile* lfile;
   Status s = options.env->NewWritableFile(dbname,&lfile);
   impl->logfile_ = lfile;
@@ -164,15 +173,80 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
 Status DBImpl::MakeRoomForWrite(bool force) {
   Status s;
   while (true) {
-    uint64_t new_log_number = next_file_number_++;
-    WritableFile* lfile = nullptr;
-    s = env_->NewWritableFile(LogFileName(dbname_, new_log_number), &lfile);
-    delete log_;
-    delete logfile_;
+    if(!force && (mem_->ApproximateMemoryUsage() <= 4 * 1024 * 1024))
+    {
+      break;
+    }
+    else
+    {
+      uint64_t new_log_number = versions_->NewFileNumber();
+      WritableFile* lfile = nullptr;
+      s = env_->NewWritableFile(LogFileName(dbname_, new_log_number), &lfile);
+      delete log_;
+      delete logfile_;
+      logfile_ = lfile;
+      logfile_number_ = new_log_number;
+      log_ = new log::Writer(lfile);
+      imm_ = mem_;
+      has_imm_.store(true, std::memory_order_release);
+      mem_ = new MemTable(internal_comparator_);
+      mem_->Ref();
+      force = false;
+      MaybeScheduleCompaction();
+    }
   }  
-
   return s;
+}
 
+void DBImpl::MaybeScheduleCompaction() {
+  if (background_compaction_scheduled_) {
+    // Already scheduled
+  } else {
+    background_compaction_scheduled_ = true;
+    env_->Schedule(&DBImpl::BGWork, this);
+  }
+}
+
+void DBImpl::BGWork(void* db) {
+  reinterpret_cast<DBImpl*>(db)->BackgroundCall();
+}
+
+void DBImpl::BackgroundCall() {
+  //MutexLock l(&mutex_);
+  BackgroundCompaction();
+  background_compaction_scheduled_ = false;
+}
+
+void DBImpl::BackgroundCompaction() {
+  if (imm_ != nullptr) {
+    CompactMemTable();
+    return;
+  }
+
+}
+
+void DBImpl::CompactMemTable() {
+  VersionEdit edit;
+  Version* base = versions_->current();
+  base->Ref();
+  Status s = WriteLevel0Table(imm_, &edit, base);
+  base->Unref();
+
+}
+
+Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,Version* base) {
+  const uint64_t start_micros = env_->NowMicros();
+  FileMetaData meta;
+  meta.number = versions_->NewFileNumber();
+  pending_outputs_.insert(meta.number);
+
+  Iterator* iter = mem->NewIterator();
+  cout<<"level-0 table "<<meta.number<<endl;
+
+
+  Status s;
+  s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
+  return s;
 }
 
 }

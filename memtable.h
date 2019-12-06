@@ -7,6 +7,7 @@
 #include "skiplist.h"
 #include "db.h"
 #include "arena.h"
+#include "iterator.h"
 
 namespace leveldb {
 
@@ -36,7 +37,7 @@ class MemTable {
 
   // Returns an estimate of the number of bytes of data in use by this
   // data structure. It is safe to call when MemTable is being modified.
-//  size_t ApproximateMemoryUsage();
+  size_t ApproximateMemoryUsage();
 
   // Return an iterator that yields the contents of the memtable.
   //
@@ -44,7 +45,7 @@ class MemTable {
   // while the returned iterator is live.  The keys returned by this
   // iterator are internal keys encoded by AppendInternalKey in the
   // db/format.{h,cc} module.
-//  Iterator* NewIterator();
+  Iterator* NewIterator();
 
   // Add an entry into memtable that maps key to value at the
   // specified sequence number and with the specified type.
@@ -59,7 +60,7 @@ class MemTable {
   bool Get(const LookupKey& key, std::string* value, Status* s);
 
  private:
-//  friend class MemTableIterator;
+  friend class MemTableIterator;
 //  friend class MemTableBackwardIterator;
 
   struct KeyComparator {
