@@ -4,9 +4,11 @@
 #include <stddef.h>
 #include "env.h"
 
+
 namespace leveldb {
 
 class Comparator;
+class FilterPolicy;
 
 enum CompressionType {
   // NOTE: do not change the values of existing entries, as these are
@@ -22,6 +24,12 @@ struct Options {
   const Comparator* comparator;
 
   int block_restart_interval = 16;
+
+  const FilterPolicy* filter_policy = nullptr;
+
+  size_t block_size = 4 * 1024;
+
+  CompressionType compression = kNoCompression;
 };
 
 struct WriteOptions {

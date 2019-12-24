@@ -241,7 +241,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,Version* base) 
   pending_outputs_.insert(meta.number);
 
   Iterator* iter = mem->NewIterator();
-  cout<<"level-0 table "<<meta.number<<endl;
+  std::cout<<"level-0 table "<<meta.number<<std::endl;
 
 
   Status s;

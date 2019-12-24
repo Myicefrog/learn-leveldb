@@ -6,5 +6,6 @@ Env::~Env() = default;
 
 WritableFile::~WritableFile() = default;
 
+RandomAccessFile::~RandomAccessFile() = default;
 
 }

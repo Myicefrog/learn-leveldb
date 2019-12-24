@@ -265,6 +265,13 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
+  Status DeleteFile(const std::string& filename) override {
+    if (::unlink(filename.c_str()) != 0) {
+      return PosixError(filename, errno);
+    }
+    return Status::OK();
+  }
+
   void Schedule(void (*background_work_function)(void* background_work_arg),
                 void* background_work_arg) override;
 
