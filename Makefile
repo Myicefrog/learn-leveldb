@@ -17,7 +17,7 @@ leveldb: $(OBJECTS)
 	$(CXX) $(OBJECTS) $(LIBS) -o $(TARGETS)
 
 %.o : %.cc
-	$(CXX) $(CFLAGS) $(CC_OPTS)  $< -o $@
+	$(CXX) $(CFLAGS)  $< -o $@
     
 clean:
 	rm -f *.o
