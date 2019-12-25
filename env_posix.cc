@@ -69,11 +69,13 @@ class PosixWritableFile final : public WritableFile {
   }
 
   Status Append(const Slice& data) override {
+    std::cout<<"Append start"<<std::endl;
     size_t write_size = data.size();
     const char* write_data = data.data();
-
+    
     // Fit as much as possible into buffer.
     size_t copy_size = std::min(write_size, kWritableFileBufferSize - pos_);
+    std::cout<<"Append copy_size is "<<copy_size<<std::endl;
     std::memcpy(buf_ + pos_, write_data, copy_size);
     write_data += copy_size;
     write_size -= copy_size;
@@ -254,8 +256,10 @@ class PosixEnv : public Env {
 
   Status NewWritableFile(const std::string& filename,
                          WritableFile** result) override {
+   
     int fd = ::open(filename.c_str(),
                     O_TRUNC | O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
+     std::cout<<"NewWritableFile filename is "<<filename<<" fd is "<<fd<<std::endl;
     if (fd < 0) {
       *result = nullptr;
       return PosixError(filename, errno);
@@ -268,6 +272,13 @@ class PosixEnv : public Env {
   Status DeleteFile(const std::string& filename) override {
     if (::unlink(filename.c_str()) != 0) {
       return PosixError(filename, errno);
+    }
+    return Status::OK();
+  }
+
+    Status CreateDir(const std::string& dirname) override {
+    if (::mkdir(dirname.c_str(), 0755) != 0) {
+      return PosixError(dirname, errno);
     }
     return Status::OK();
   }

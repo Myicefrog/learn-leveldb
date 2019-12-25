@@ -30,6 +30,8 @@ class Env {
 
   virtual Status DeleteFile(const std::string& fname) = 0;
 
+  virtual Status CreateDir(const std::string& dirname) = 0;
+
 };
 
 class RandomAccessFile {

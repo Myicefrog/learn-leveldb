@@ -17,7 +17,9 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
   iter->SeekToFirst();
 
   std::string fname = TableFileName(dbname, meta->number);
+  std::cout<<"BuildTable fname is "<<fname<<std::endl;
   if (iter->Valid()) {
+    std::cout<<"iter->valid"<<std::endl;
     WritableFile* file;
     s = env->NewWritableFile(fname, &file);
     if (!s.ok()) {

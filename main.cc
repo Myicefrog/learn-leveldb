@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cassert>
+#include <unistd.h>
 
 #include "db_impl.h"
 
@@ -19,13 +20,23 @@ int main()
     leveldb::Options options;
 
     Status status = DB::Open(options, "./testdb", &db);
-	status = db->Put(leveldb::WriteOptions(), key, value);
+    if(status.ok())
+    {
+        status = db->Put(leveldb::WriteOptions(), key, value);
+    }
+    else
+    {
+        std::cout<<"open error"<<std::endl;
+    }
+    
 
-    std::string value1 = "";
+/*     std::string value1 = "";
     status = db->Get(leveldb::ReadOptions(), key, &value1);
 	
-    cout<<"db get value1 is "<<value1<<endl;
-	delete db;
+    cout<<"db get value1 is "<<value1<<endl; */
+	
 
+    sleep(3);
+    delete db;
     return 0;
 }

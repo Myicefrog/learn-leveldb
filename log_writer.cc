@@ -80,8 +80,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr,
                                   size_t length) {
   assert(length <= 0xffff);  // Must fit in two bytes
   assert(block_offset_ + kHeaderSize + length <= kBlockSize);
-
-  // Format the header
+  
   char buf[kHeaderSize];
   buf[4] = static_cast<char>(length & 0xff);
   buf[5] = static_cast<char>(length >> 8);
@@ -91,14 +90,16 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr,
   uint32_t crc = crc32c::Extend(type_crc_[t], ptr, length);
   crc = crc32c::Mask(crc);  // Adjust for storage
   EncodeFixed32(buf, crc);
-
+  std::cout<<"EmitPhysicalRecord EncodeFixed32 kHeaderSize "<<kHeaderSize<<std::endl;
+  // Format the header
   // Write the header and the payload
-  Status s = dest_->Append(Slice(buf, kHeaderSize));
+  Slice a = Slice(buf, kHeaderSize);
+  Status s = dest_->Append(a);
   if (s.ok()) {
     s = dest_->Append(Slice(ptr, length));
     if (s.ok()) {
       s = dest_->Flush();
-    }
+    } 
   }
   block_offset_ += kHeaderSize + length;
   return s;

@@ -57,14 +57,19 @@ Status DB::Open(const Options& options, const std::string& dbname, DB** dbptr) {
   DBImpl* impl = new DBImpl(options, dbname);
   *dbptr = impl;
 
+  options.env->CreateDir(dbname);
+
   uint64_t new_log_number = impl->versions_->NewFileNumber();
   WritableFile* lfile;
-  Status s = options.env->NewWritableFile(dbname,&lfile);
-  impl->logfile_ = lfile;
-  impl->logfile_number_ = new_log_number;
-  impl->log_ = new log::Writer(lfile);
-  impl->mem_ = new MemTable(impl->internal_comparator_);
-  impl->mem_->Ref();
+  Status s = options.env->NewWritableFile(LogFileName(dbname, new_log_number), &lfile);
+  if(s.ok())
+  {
+    impl->logfile_ = lfile;
+    impl->logfile_number_ = new_log_number;
+    impl->log_ = new log::Writer(lfile);
+    impl->mem_ = new MemTable(impl->internal_comparator_);
+    impl->mem_->Ref();
+  }
 
   
   return s;
@@ -85,11 +90,12 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates)  {
   w.batch = updates;
   w.sync = options.sync;
   w.done = false;
+  Status status;
 
   Writer* last_writer = &w;
   writers_.push_back(&w);
 
-  Status status = MakeRoomForWrite(updates == nullptr);
+  //status = MakeRoomForWrite(updates == nullptr);
 
   if (updates != nullptr){
     WriteBatch* updates = BuildBatchGroup(&last_writer);
@@ -100,7 +106,9 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates)  {
     {
       status = WriteBatchInternal::InsertInto(updates, mem_);
     }
-  } 
+  }
+
+  status = MakeRoomForWrite(updates == nullptr); 
 
   return status;
 
@@ -171,13 +179,14 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
 }
 
 Status DBImpl::MakeRoomForWrite(bool force) {
+  
   Status s;
   while (true) {
-    if(!force && (mem_->ApproximateMemoryUsage() <= 4 * 1024 * 1024))
+/*     if(!force && (mem_->ApproximateMemoryUsage() <= 4 * 1024 * 1024))
     {
       break;
     }
-    else
+    else */
     {
       uint64_t new_log_number = versions_->NewFileNumber();
       WritableFile* lfile = nullptr;
@@ -193,6 +202,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       mem_->Ref();
       force = false;
       MaybeScheduleCompaction();
+      break;
     }
   }  
   return s;
