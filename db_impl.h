@@ -10,6 +10,7 @@
 #include "log_writer.h"
 #include "dbformat.h"
 #include "env.h"
+#include "thread_annotations.h"
 
 namespace leveldb {
 
@@ -63,7 +64,7 @@ class DBImpl : public DB {
   port::Mutex mutex_;
   
   WritableFile* logfile_;
-  uint64_t logfile_number_;
+  uint64_t logfile_number_ GUARDED_BY(mutex_);
 
   WriteBatch* BuildBatchGroup(Writer** last_writer);
   
